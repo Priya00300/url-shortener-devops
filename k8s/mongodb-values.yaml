@@ -1,0 +1,55 @@
+# k8s/mongodb-values.yaml
+# MongoDB Helm Chart Values for URL Shortener
+
+# Authentication settings
+auth:
+  enabled: false  # Disabled for simplicity in dev; enable in production
+  # rootPassword: "your-root-password"
+  # username: "urlshortener"
+  # password: "your-password"
+  # database: "urlshortener"
+
+# Architecture
+architecture: standalone
+
+# Persistence
+persistence:
+  enabled: true
+  storageClass: "local-path"  # k3d default storage class
+  size: 2Gi
+
+# Resources
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 27017
+
+# Pod settings
+podLabels:
+  app: mongodb
+  component: database
+
+# Health checks
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 6
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 6

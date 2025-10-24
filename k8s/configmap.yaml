@@ -1,0 +1,12 @@
+# k8s/configmap.yaml
+# ConfigMap for application configuration
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: url-shortener
+data:
+  NODE_ENV: "production"
+  BASE_URL: "http://localhost:8080"
+  LOG_LEVEL: "info"

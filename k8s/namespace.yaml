@@ -1,0 +1,10 @@
+# k8s/namespace.yaml
+# Namespace for URL Shortener application
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: url-shortener
+  labels:
+    name: url-shortener
+    environment: development
