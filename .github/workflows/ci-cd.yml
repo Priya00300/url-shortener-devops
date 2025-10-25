@@ -1,42 +1,81 @@
-name: CI/CD with GitHub Container Registry
+name: CI/CD Pipeline
+
 on:
   push:
-    branches: [main, master]
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
   workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/priya00300
 
 jobs:
   build-and-push:
+    name: Build and Push to GitHub Container Registry
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
-      
-      - name: Login to GitHub Container Registry
+
+      - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ghcr.io
+          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
-      - name: Build and Push Redirector Service
+
+      - name: Extract metadata for Redirector
+        id: meta-redirector
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/redirector-service
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push Redirector Service
         uses: docker/build-push-action@v5
         with:
           context: ./redirector-service
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/redirector-service:latest
-      
-      - name: Build and Push Analytics Service
+          tags: ${{ steps.meta-redirector.outputs.tags }}
+          labels: ${{ steps.meta-redirector.outputs.labels }}
+
+      - name: Extract metadata for Analytics
+        id: meta-analytics
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}/analytics-service
+          tags: |
+            type=raw,value=latest
+            type=sha,prefix={{branch}}-
+
+      - name: Build and push Analytics Service
         uses: docker/build-push-action@v5
         with:
           context: ./analytics-service
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/analytics-service:latest
-      
-      - name: Success
+          tags: ${{ steps.meta-analytics.outputs.tags }}
+          labels: ${{ steps.meta-analytics.outputs.labels }}
+
+      - name: Build Summary
         run: |
-          echo "✅ Images pushed to GitHub Container Registry!"
-          echo "📦 ghcr.io/${{ github.repository_owner }}/redirector-service:latest"
-          echo "📦 ghcr.io/${{ github.repository_owner }}/analytics-service:latest"
+          echo "### 🚀 Images Built Successfully! :rocket:" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Redirector Service:**" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ env.IMAGE_PREFIX }}/redirector-service:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Analytics Service:**" >> $GITHUB_STEP_SUMMARY
+          echo "- \`${{ env.IMAGE_PREFIX }}/analytics-service:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Deploy to Kubernetes:**" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+          echo "kubectl rollout restart deployment/redirector-service -n url-shortener" >> $GITHUB_STEP_SUMMARY
+          echo "kubectl rollout restart deployment/analytics-service -n url-shortener" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
