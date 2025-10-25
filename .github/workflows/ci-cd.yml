@@ -1,26 +1,42 @@
-name: Debug Docker Login
-
-on: workflow_dispatch
+name: CI/CD with GitHub Container Registry
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
 
 jobs:
-  debug-login:
+  build-and-push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
-      - name: Install Docker
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y docker.io
+      - name: Checkout code
+        uses: actions/checkout@v4
       
-      - name: Debug - Show what we're sending
-        run: |
-          echo "Username: priiya03"
-          echo "Token preview: ${DOCKER_PASSWORD:0:10}..."  # Show first 10 chars
-          echo "Token length: ${#DOCKER_PASSWORD}"
-        env:
-          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       
-      - name: Try Docker Login with verbose output
+      - name: Build and Push Redirector Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./redirector-service
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/redirector-service:latest
+      
+      - name: Build and Push Analytics Service
+        uses: docker/build-push-action@v5
+        with:
+          context: ./analytics-service
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/analytics-service:latest
+      
+      - name: Success
         run: |
-          echo "Attempting Docker login..."
-          echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "priiya03" --password-stdin
-          echo "Exit code: $?"
+          echo "✅ Images pushed to GitHub Container Registry!"
+          echo "📦 ghcr.io/${{ github.repository_owner }}/redirector-service:latest"
+          echo "📦 ghcr.io/${{ github.repository_owner }}/analytics-service:latest"
