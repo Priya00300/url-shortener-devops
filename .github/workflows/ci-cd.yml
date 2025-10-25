@@ -1,14 +1,26 @@
-name: Test Docker Login
+name: Debug Docker Login
 
 on: workflow_dispatch
 
 jobs:
-  test-login:
+  debug-login:
     runs-on: ubuntu-latest
     steps:
-      - name: Test Docker Hub Login
+      - name: Install Docker
         run: |
-          echo "Testing Docker Hub login..."
+          sudo apt-get update
+          sudo apt-get install -y docker.io
+      
+      - name: Debug - Show what we're sending
+        run: |
+          echo "Username: priiya03"
+          echo "Token preview: ${DOCKER_PASSWORD:0:10}..."  # Show first 10 chars
+          echo "Token length: ${#DOCKER_PASSWORD}"
+        env:
+          DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Try Docker Login with verbose output
+        run: |
+          echo "Attempting Docker login..."
           echo "${{ secrets.DOCKER_PASSWORD }}" | docker login -u "priiya03" --password-stdin
-          echo "✅ Login successful!"
-          docker logout
+          echo "Exit code: $?"
