@@ -1,7 +1,12 @@
+# .github/workflows/ci-cd.yml
+# Production-ready CI/CD Pipeline
+
 name: CI/CD Pipeline
 
 on:
   push:
+    branches: [ main, master ]
+  pull_request:
     branches: [ main, master ]
   workflow_dispatch:
 
@@ -11,12 +16,13 @@ env:
   ANALYTICS_IMAGE: priiya03/analytics-service
 
 jobs:
+  # Job: Build and Push Docker Images
   build-and-push:
     name: Build and Push Docker Images
     runs-on: ubuntu-latest
     
     steps:
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v4
 
     - name: Set up Docker Buildx
@@ -28,15 +34,34 @@ jobs:
         username: ${{ env.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
 
+    - name: Extract Docker metadata for Redirector
+      id: meta-redirector
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REDIRECTOR_IMAGE }}
+        tags: |
+          type=raw,value=latest
+          type=sha,prefix={{branch}}-
+
     - name: Build and push Redirector Service
       uses: docker/build-push-action@v5
       with:
         context: ./redirector-service
         file: ./redirector-service/Dockerfile
         push: true
+        tags: ${{ steps.meta-redirector.outputs.tags }}
+        labels: ${{ steps.meta-redirector.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Extract Docker metadata for Analytics
+      id: meta-analytics
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.ANALYTICS_IMAGE }}
         tags: |
-          ${{ env.REDIRECTOR_IMAGE }}:latest
-          ${{ env.REDIRECTOR_IMAGE }}:${{ github.sha }}
+          type=raw,value=latest
+          type=sha,prefix={{branch}}-
 
     - name: Build and push Analytics Service
       uses: docker/build-push-action@v5
@@ -44,12 +69,23 @@ jobs:
         context: ./analytics-service
         file: ./analytics-service/Dockerfile
         push: true
-        tags: |
-          ${{ env.ANALYTICS_IMAGE }}:latest
-          ${{ env.ANALYTICS_IMAGE }}:${{ github.sha }}
+        tags: ${{ steps.meta-analytics.outputs.tags }}
+        labels: ${{ steps.meta-analytics.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
-    - name: Success Summary
+    - name: Build Summary
       run: |
-        echo "✅ Images built and pushed successfully!"
-        echo "Redirector: ${{ env.REDIRECTOR_IMAGE }}:latest"
-        echo "Analytics: ${{ env.ANALYTICS_IMAGE }}:latest"
+        echo "### 🚀 Docker Images Built Successfully! :rocket:" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Redirector Service:**" >> $GITHUB_STEP_SUMMARY
+        echo "- Image: \`${{ env.REDIRECTOR_IMAGE }}:latest\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**Analytics Service:**" >> $GITHUB_STEP_SUMMARY
+        echo "- Image: \`${{ env.ANALYTICS_IMAGE }}:latest\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "**To deploy to your Kubernetes cluster, run:**" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        echo "kubectl rollout restart deployment/redirector-service -n url-shortener" >> $GITHUB_STEP_SUMMARY
+        echo "kubectl rollout restart deployment/analytics-service -n url-shortener" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
