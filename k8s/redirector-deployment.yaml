@@ -29,7 +29,7 @@ spec:
     spec:
       containers:
       - name: redirector-service
-        image:  ghcr.io/priya00300/redirector-service:latest
+        image: ghcr.io/priya00300/redirector-service:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 3001
