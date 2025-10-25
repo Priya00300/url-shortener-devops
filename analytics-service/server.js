@@ -33,14 +33,10 @@ if (process.env.NODE_ENV === 'development') {
 // Database connection with retry logic
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI, {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-    });
+    const conn = await mongoose.connect(process.env.MONGODB_URI);
     console.log(`MongoDB Connected: ${conn.connection.host}`);
   } catch (error) {
     console.error('Database connection failed:', error.message);
-    // Retry connection after 5 seconds
     setTimeout(connectDB, 5000);
   }
 };
